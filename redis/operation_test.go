@@ -47,7 +47,7 @@ func TestOperation(t *testing.T) {
 
 	t.Run("Delete", func(t *testing.T) {
 		mock.ExpectDel(key).SetVal(1)
-		err := instance.Delete(key)
+		err := instance.Del(key)
 		assert.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -78,7 +78,7 @@ func TestOperation(t *testing.T) {
 
 	t.Run("HDelete", func(t *testing.T) {
 		mock.ExpectHDel(key, field).SetVal(1)
-		result, err := instance.HDelete(key, field)
+		result, err := instance.HDel(key, field)
 		assert.Equal(t, int64(1), result)
 		assert.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())

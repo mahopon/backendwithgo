@@ -30,7 +30,7 @@ func (c *redisClient) Get(key string) (string, error) {
 	return val, nil
 }
 
-func (c *redisClient) Delete(key ...string) error {
+func (c *redisClient) Del(key ...string) error {
 	log.Printf("Deleting key %s", key)
 
 	err := c.client.Del(ctx, key...).Err()
@@ -64,7 +64,7 @@ func (c *redisClient) HSet(key string, field string, value any, ttl time.Duratio
 	return fieldCount, err
 }
 
-func (c *redisClient) HDelete(key string, field string) (int64, error) {
+func (c *redisClient) HDel(key string, field string) (int64, error) {
 	log.Printf("HDeleting key %s, field %s", key, field)
 	fieldCount, err := c.client.HDel(ctx, key, field).Result()
 	if err != nil {
