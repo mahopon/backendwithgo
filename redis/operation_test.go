@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-redis/redismock/v9"
 	"github.com/joho/godotenv"
-	test "github.com/mahopon/backendwithgo/testing"
+	test "github.com/mahopon/gobackend/testing"
 	"github.com/stretchr/testify/assert"
 )
 

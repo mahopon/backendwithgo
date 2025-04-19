@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	test "github.com/mahopon/backendwithgo/testing"
+	test "github.com/mahopon/gobackend/testing"
 	"github.com/stretchr/testify/assert"
 )
 

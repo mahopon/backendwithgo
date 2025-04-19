@@ -1,4 +1,4 @@
-module github.com/mahopon/backendwithgo
+module github.com/mahopon/gobackend
 
 go 1.24.0
 
