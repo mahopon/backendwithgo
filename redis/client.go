@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	redis "github.com/redis/go-redis/v9"
 	"log"
 	"os"
@@ -35,7 +36,7 @@ func startClient(redisurl string) (*redisClient, error) {
 	client := redis.NewClient(opts)
 	log.Println("Successfully connect to Redis")
 	clientInstance = &redisClient{client: client, raw: client}
-
+	clientInstance.startHealthMonitor()
 	return clientInstance, nil
 }
 
@@ -54,4 +55,43 @@ func GetClient() *redisClient {
 
 func (instance *redisClient) CloseClient() {
 	instance.raw.Close()
+}
+
+func (instance *redisClient) ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	return instance.client.Ping(ctx).Err()
+}
+
+func reconnect(redisurl string, maxRetries int, backoff time.Duration) (*redisClient, error) {
+	var err error
+	for i := range maxRetries {
+		log.Printf("Attempting to connect to Redis (%d/%d)", i, maxRetries)
+		client, err := startClient(redisurl)
+		if err == nil && client.ping() == nil {
+			log.Println("Reconnected to Redis successfully")
+			return client, nil
+		}
+		time.Sleep(backoff)
+		backoff *= 2
+	}
+	return nil, err
+}
+
+func (instance *redisClient) startHealthMonitor() {
+	ticker := time.NewTicker(30 * time.Second)
+	go func() {
+		for range ticker.C {
+			if err := instance.ping(); err != nil {
+				log.Printf("Redis health check failed: %v", err)
+				newClient, err := reconnect(os.Getenv("REDIS_URL"), 5, 1*time.Second)
+				if err != nil {
+					log.Printf("Redis reconnection failed: %v", err)
+					continue
+				}
+				instance.client = newClient.client
+				instance.raw = newClient.raw
+			}
+		}
+	}()
 }

@@ -27,5 +27,5 @@ func TestRedisIntegration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "testvalue", val)
 
-	_ = client.Delete("testkey")
+	_ = client.Del("testkey")
 }
