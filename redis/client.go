@@ -2,11 +2,13 @@ package redis
 
 import (
 	"context"
-	redis "github.com/redis/go-redis/v9"
+	"errors"
 	"log"
 	"os"
 	"sync"
 	"time"
+
+	redis "github.com/redis/go-redis/v9"
 )
 
 type RedisClient interface {
@@ -18,6 +20,7 @@ type RedisClient interface {
 type redisClient struct {
 	client redis.Cmdable
 	raw    *redis.Client
+	mu     sync.RWMutex
 }
 
 var (
@@ -58,6 +61,11 @@ func (instance *redisClient) CloseClient() {
 }
 
 func (instance *redisClient) ping() error {
+	instance.mu.RLock()
+	defer instance.mu.RUnlock()
+	if instance.client == nil {
+		return errors.New("redis client is nil")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return instance.client.Ping(ctx).Err()
@@ -68,7 +76,7 @@ func reconnect(redisurl string, maxRetries int, backoff time.Duration) (*redisCl
 	for i := range maxRetries {
 		log.Printf("Attempting to connect to Redis (%d/%d)", i, maxRetries)
 		client, err := startClient(redisurl)
-		if err == nil && client.ping() == nil {
+		if err == nil && client != nil && client.ping() == nil {
 			log.Println("Reconnected to Redis successfully")
 			return client, nil
 		}
@@ -89,8 +97,10 @@ func (instance *redisClient) startHealthMonitor() {
 					log.Printf("Redis reconnection failed: %v", err)
 					continue
 				}
+				instance.mu.Lock()
 				instance.client = newClient.client
 				instance.raw = newClient.raw
+				instance.mu.Unlock()
 			}
 		}
 	}()
