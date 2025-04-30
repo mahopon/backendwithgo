@@ -30,7 +30,6 @@ var (
 
 func startClient(redisurl string) (*redisClient, error) {
 	log.Println("Start connection to Redis")
-	log.Printf("URL:%s", redisurl)
 	opts, err := redis.ParseURL(redisurl)
 	if err != nil {
 		return nil, err
@@ -71,15 +70,18 @@ func (instance *redisClient) ping() error {
 	return instance.client.Ping(ctx).Err()
 }
 
-func reconnect(redisurl string, maxRetries int, backoff time.Duration) (*redisClient, error) {
+func (instance *redisClient) reconnect(redisurl string, maxRetries int, backoff time.Duration) (*redisClient, error) {
 	var err error
 	for i := range maxRetries {
 		log.Printf("Attempting to connect to Redis (%d/%d)", i, maxRetries)
+		instance.mu.Lock()
 		client, err := startClient(redisurl)
 		if err == nil && client != nil && client.ping() == nil {
+			instance.mu.Unlock()
 			log.Println("Reconnected to Redis successfully")
 			return client, nil
 		}
+		instance.mu.Unlock()
 		time.Sleep(backoff)
 		backoff *= 2
 	}
@@ -92,7 +94,7 @@ func (instance *redisClient) startHealthMonitor() {
 		for range ticker.C {
 			if err := instance.ping(); err != nil {
 				log.Printf("Redis health check failed: %v", err)
-				newClient, err := reconnect(os.Getenv("REDIS_URL"), 5, 1*time.Second)
+				newClient, err := instance.reconnect(os.Getenv("REDIS_URL"), 5, 1*time.Second)
 				if err != nil {
 					log.Printf("Redis reconnection failed: %v", err)
 					continue
